@@ -1,0 +1,48 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+env/
+venv/
+
+# Benchmarks
+.benchmarks/
+
+# Backend env
+backend/.env
+backend/.venv/
+backend/__pycache__/
+backend/app/__pycache__/
+
+# Node / React
+node_modules/
+dist/
+build/
+coverage/
+
+# Frontend env
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+
+# Logs
+*.log
+
+# Local database
+*.db
+*.sqlite3
