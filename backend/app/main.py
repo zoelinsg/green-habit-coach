@@ -35,4 +35,8 @@ def me(payload=Depends(require_auth)):
 
 @app.post("/api/analyze", response_model=HabitAnalysisResponse)
 def analyze(payload: HabitInput, user=Depends(require_auth)):
-    return analyze_habits(payload.model_dump(), use_gemini=True)
+    print("analyze route entered")
+    print("user:", user.get("sub"))
+    print("payload:", payload.model_dump())
+
+    return analyze_habits(payload.model_dump(), use_gemini=False)

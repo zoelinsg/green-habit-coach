@@ -29,10 +29,14 @@ def analyze_with_mock(payload: dict) -> dict:
 
 def analyze_habits(payload: dict, use_gemini: bool = True) -> dict:
     if not use_gemini:
+        print("using mock analysis")
         return analyze_with_mock(payload)
 
     try:
-        return analyze_with_gemini(payload)
+        print("calling Gemini...")
+        result = analyze_with_gemini(payload)
+        print("Gemini success")
+        return result
     except Exception as e:
         print(f"Gemini failed, fallback to mock: {e}")
         return analyze_with_mock(payload)
