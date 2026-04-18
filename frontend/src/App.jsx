@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import CoachChat from "./components/CoachChat";
 
 function App() {
   const [form, setForm] = useState({
@@ -19,6 +20,8 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const {
     loginWithRedirect,
@@ -40,13 +43,11 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("1. handleSubmit triggered");
 
     setApiError("");
     setResult(null);
 
     if (!isAuthenticated) {
-      console.log("2. not authenticated, redirecting...");
       await loginWithRedirect();
       return;
     }
@@ -54,14 +55,7 @@ function App() {
     setLoading(true);
 
     try {
-      console.log("3. getting access token...");
-      const token = await Promise.race([
-        getAccessTokenSilently(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("getAccessTokenSilently timeout after 10s")), 10000)
-        ),
-      ]);
-      console.log("4. token received", token ? "yes" : "no");
+      const token = await getAccessTokenSilently();
 
       const payload = {
         ...form,
@@ -72,40 +66,69 @@ function App() {
         shopping_frequency_per_week: Number(form.shopping_frequency_per_week),
       };
 
-      console.log("5. sending request to backend", payload);
-
-      const response = await Promise.race([
-        fetch("http://127.0.0.1:8000/api/analyze", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("fetch timeout after 15s")), 15000)
-        ),
-      ]);
-
-      console.log("6. backend responded", response.status);
+      const response = await fetch("http://127.0.0.1:8000/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("7. response error text:", errorText);
         throw new Error(errorText || "Failed to analyze habits.");
       }
 
       const data = await response.json();
-      console.log("8. response json", data);
       setResult(data);
     } catch (err) {
-      console.error("9. analyze flow error:", err);
+      console.error("Analyze API error:", err);
       setApiError(err.message || "Failed to analyze habits.");
     } finally {
-      console.log("10. submit finished");
       setLoading(false);
     }
+  };
+
+  const handleLoadHistory = async () => {
+    setApiError("");
+    setHistoryLoading(true);
+
+    try {
+      const token = await getAccessTokenSilently();
+
+      const response = await fetch("http://127.0.0.1:8000/api/history", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to load history.");
+      }
+
+      const data = await response.json();
+      setHistory(data);
+    } catch (err) {
+      console.error("History API error:", err);
+      setApiError(err.message || "Failed to load history.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const formatDateTime = (value) => {
+    const date = new Date(value);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   if (isLoading) {
@@ -145,20 +168,33 @@ function App() {
               <p style={{ marginBottom: "0.75rem" }}>
                 Logged in as: <strong>{user?.name || user?.email}</strong>
               </p>
-              <button
-                onClick={() =>
-                  logout({
-                    logoutParams: {
-                      returnTo: window.location.origin,
-                    },
-                  })
-                }
-              >
-                Log out
-              </button>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    logout({
+                      logoutParams: {
+                        returnTo: window.location.origin,
+                      },
+                    })
+                  }
+                >
+                  Log out
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLoadHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? "Loading..." : "Load History"}
+                </button>
+              </div>
             </>
           ) : (
-            <button onClick={() => loginWithRedirect()}>Log in</button>
+            <button type="button" onClick={() => loginWithRedirect()}>
+              Log in
+            </button>
           )}
         </div>
       </div>
@@ -170,7 +206,13 @@ function App() {
       )}
 
       {apiError && (
-        <p style={{ color: "red", marginBottom: "1rem", whiteSpace: "pre-wrap" }}>
+        <p
+          style={{
+            color: "red",
+            marginBottom: "1rem",
+            whiteSpace: "pre-wrap",
+          }}
+        >
           API Error: {apiError}
         </p>
       )}
@@ -367,6 +409,73 @@ function App() {
               <li key={index}>{item}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {isAuthenticated && result && (
+        <CoachChat
+          getAccessTokenSilently={getAccessTokenSilently}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
+
+      {history.length > 0 && (
+        <div
+          style={{
+            marginTop: "2rem",
+            padding: "1.5rem",
+            border: "1px solid #ccc",
+            borderRadius: "12px",
+          }}
+        >
+          <h2>History</h2>
+
+          {history.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: "10px",
+                padding: "1rem",
+                marginTop: "1rem",
+              }}
+            >
+              <p>
+                <strong>Record ID:</strong> {item.id}
+              </p>
+              <p>
+                <strong>Score:</strong> {item.score}
+              </p>
+              <p>
+                <strong>Summary:</strong> {item.summary}
+              </p>
+              <p>
+                <strong>Created At:</strong>{" "}
+                {formatDateTime(item.created_at)}
+              </p>
+
+              <h3>Top Issues</h3>
+              <ul>
+                {item.top_issues?.map((issue, index) => (
+                  <li key={index}>{issue}</li>
+                ))}
+              </ul>
+
+              <h3>Suggestions</h3>
+              <ul>
+                {item.suggestions?.map((suggestion, index) => (
+                  <li key={index}>{suggestion}</li>
+                ))}
+              </ul>
+
+              <h3>7-Day Challenge Plan</h3>
+              <ul>
+                {item.challenge_plan?.map((day, index) => (
+                  <li key={index}>{day}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </div>
