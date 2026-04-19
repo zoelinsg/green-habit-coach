@@ -111,9 +111,9 @@ class CoachMessageInput(BaseModel):
 
 
 @app.post("/api/coach/thread")
-def create_coach_thread(user=Depends(require_auth)):
+async def create_coach_thread(user=Depends(require_auth)):
     try:
-        thread_id = create_thread()
+        thread_id = await create_thread()
         return {"thread_id": thread_id}
     except Exception as e:
         print("create_coach_thread error:", str(e))
@@ -124,13 +124,13 @@ def create_coach_thread(user=Depends(require_auth)):
 
 
 @app.post("/api/coach/message")
-def coach_message(
+async def coach_message(
     thread_id: str,
     payload: CoachMessageInput,
     user=Depends(require_auth),
 ):
     try:
-        reply = send_message(
+        reply = await send_message(
             thread_id=thread_id,
             user_message=payload.message,
         )
