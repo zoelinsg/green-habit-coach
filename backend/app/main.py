@@ -130,10 +130,7 @@ async def coach_message(
     user=Depends(require_auth),
 ):
     try:
-        reply = await send_message(
-            thread_id=thread_id,
-            message=payload.message,
-        )
+        reply = await send_message(thread_id, payload.message)
         return {"reply": reply}
     except Exception as e:
         print("coach_message error:", str(e))
