@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -37,11 +37,11 @@ def health():
 
 
 @app.get("/api/me")
-def me(payload=Depends(require_auth)):
+def me(user=Depends(require_auth)):
     return {
-        "sub": payload.get("sub"),
-        "email": payload.get("email"),
-        "name": payload.get("name"),
+        "sub": user.get("sub"),
+        "email": user.get("email"),
+        "name": user.get("name"),
     }
 
 
@@ -112,8 +112,15 @@ class CoachMessageInput(BaseModel):
 
 @app.post("/api/coach/thread")
 def create_coach_thread(user=Depends(require_auth)):
-    thread_id = create_thread(user_id=user.get("sub"))
-    return {"thread_id": thread_id}
+    try:
+        thread_id = create_thread()
+        return {"thread_id": thread_id}
+    except Exception as e:
+        print("create_coach_thread error:", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create coach thread: {str(e)}",
+        )
 
 
 @app.post("/api/coach/message")
@@ -122,9 +129,15 @@ def coach_message(
     payload: CoachMessageInput,
     user=Depends(require_auth),
 ):
-    reply = send_message(
-        thread_id=thread_id,
-        user_message=payload.message,
-        user_id=user.get("sub"),
-    )
-    return {"reply": reply}
+    try:
+        reply = send_message(
+            thread_id=thread_id,
+            user_message=payload.message,
+        )
+        return {"reply": reply}
+    except Exception as e:
+        print("coach_message error:", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get coach reply: {str(e)}",
+        )
