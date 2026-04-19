@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
   const [threadId, setThreadId] = useState("");
   const [message, setMessage] = useState("");
@@ -15,10 +17,16 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
       setThreadLoading(true);
       setChatError("");
 
+      if (!API_BASE_URL) {
+        setChatError("VITE_API_BASE_URL is not set.");
+        setThreadLoading(false);
+        return;
+      }
+
       try {
         const token = await getAccessTokenSilently();
 
-        const response = await fetch("http://127.0.0.1:8000/api/coach/thread", {
+        const response = await fetch(`${API_BASE_URL}/api/coach/thread`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -58,6 +66,11 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
     setChatError("");
     setReply("");
 
+    if (!API_BASE_URL) {
+      setChatError("VITE_API_BASE_URL is not set.");
+      return;
+    }
+
     if (!message.trim()) {
       setChatError("Please enter a question first.");
       return;
@@ -74,7 +87,7 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
       const token = await getAccessTokenSilently();
 
       const response = await fetch(
-        `http://127.0.0.1:8000/api/coach/message?thread_id=${encodeURIComponent(threadId)}`,
+        `${API_BASE_URL}/api/coach/message?thread_id=${encodeURIComponent(threadId)}`,
         {
           method: "POST",
           headers: {

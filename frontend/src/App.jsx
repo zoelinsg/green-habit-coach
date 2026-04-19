@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import CoachChat from "./components/CoachChat";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 function App() {
   const [form, setForm] = useState({
     transport_mode: "motorcycle",
@@ -47,6 +49,11 @@ function App() {
     setApiError("");
     setResult(null);
 
+    if (!API_BASE_URL) {
+      setApiError("VITE_API_BASE_URL is not set.");
+      return;
+    }
+
     if (!isAuthenticated) {
       await loginWithRedirect();
       return;
@@ -66,7 +73,7 @@ function App() {
         shopping_frequency_per_week: Number(form.shopping_frequency_per_week),
       };
 
-      const response = await fetch("http://127.0.0.1:8000/api/analyze", {
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,12 +99,24 @@ function App() {
 
   const handleLoadHistory = async () => {
     setApiError("");
+
+    if (!API_BASE_URL) {
+      setApiError("VITE_API_BASE_URL is not set.");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      await loginWithRedirect();
+      return;
+    }
+
     setHistoryLoading(true);
 
     try {
       const token = await getAccessTokenSilently();
 
-      const response = await fetch("http://127.0.0.1:8000/api/history", {
+      const response = await fetch(`${API_BASE_URL}/api/history`, {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
