@@ -19,7 +19,6 @@ Base = declarative_base()
 
 def init_db():
     from app.models import HabitRecord
-
     Base.metadata.create_all(bind=engine)
 
 
