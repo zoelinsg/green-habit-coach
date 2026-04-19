@@ -3,27 +3,19 @@ import { useEffect, useState } from "react";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
-  const [threadId, setThreadId] = useState("");
-  const [message, setMessage] = useState("");
+  const [question, setQuestion] = useState("");
   const [reply, setReply] = useState("");
+  const [threadId, setThreadId] = useState("");
   const [loading, setLoading] = useState(false);
-  const [chatError, setChatError] = useState("");
-  const [threadLoading, setThreadLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const initThread = async () => {
       if (!isAuthenticated) return;
 
-      setThreadLoading(true);
-      setChatError("");
-
-      if (!API_BASE_URL) {
-        setChatError("VITE_API_BASE_URL is not set.");
-        setThreadLoading(false);
-        return;
-      }
-
       try {
+        setError("");
+
         const token = await getAccessTokenSilently();
 
         const response = await fetch(`${API_BASE_URL}/api/coach/thread`, {
@@ -41,10 +33,8 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
         const data = await response.json();
         setThreadId(data.thread_id);
       } catch (err) {
-        console.error("Create thread error:", err);
-        setChatError(err.message || "Failed to initialize coach chat.");
-      } finally {
-        setThreadLoading(false);
+        console.error("Create coach thread error:", err);
+        setError(err.message || "Failed to create coach thread.");
       }
     };
 
@@ -52,36 +42,34 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
   }, [getAccessTokenSilently, isAuthenticated]);
 
   const formatReply = (text) => {
-    if (!text) return "";
+    if (!text) return null;
 
-    return text
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/^[-•]\s*/gm, "• ")
-      .replace(/\r/g, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    const lines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+
+    return lines.map((line, index) => (
+      <p key={index} style={{ margin: "0 0 0.9rem 0" }}>
+        {line}
+      </p>
+    ));
   };
 
-  const handleSend = async () => {
-    setChatError("");
-    setReply("");
-
-    if (!API_BASE_URL) {
-      setChatError("VITE_API_BASE_URL is not set.");
-      return;
-    }
-
-    if (!message.trim()) {
-      setChatError("Please enter a question first.");
+  const handleAskCoach = async () => {
+    if (!question.trim()) {
+      setError("Please enter a question.");
       return;
     }
 
     if (!threadId) {
-      setChatError("Coach thread is not ready yet.");
+      setError("Coach thread is not ready yet. Please wait a moment and try again.");
       return;
     }
 
     setLoading(true);
+    setError("");
+    setReply("");
 
     try {
       const token = await getAccessTokenSilently();
@@ -94,24 +82,30 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({
+            message: question,
+          }),
         }
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to send coach message.");
+        throw new Error(errorText || "Failed to get coach reply.");
       }
 
       const data = await response.json();
       setReply(data.reply || "");
     } catch (err) {
       console.error("Coach message error:", err);
-      setChatError(err.message || "Failed to get coach reply.");
+      setError(err.message || "Failed to get coach reply.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div
@@ -122,51 +116,44 @@ function CoachChat({ getAccessTokenSilently, isAuthenticated }) {
         borderRadius: "12px",
       }}
     >
-      <h2>Ask Your Green Coach</h2>
+      <h2 style={{ marginTop: 0 }}>Ask Your Green Coach</h2>
       <p>Ask a follow-up question based on your latest analysis.</p>
 
-      {threadLoading && (
-        <p style={{ color: "#666" }}>Preparing coach session...</p>
-      )}
-
-      {chatError && (
-        <p style={{ color: "red", whiteSpace: "pre-wrap" }}>
-          {chatError}
+      {error && (
+        <p style={{ color: "red", marginBottom: "1rem", whiteSpace: "pre-wrap" }}>
+          {error}
         </p>
       )}
 
       <textarea
         rows="4"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
         placeholder="Example: I have to ride a motorcycle to work. What are 3 realistic ways I can reduce my impact?"
         style={{
           width: "100%",
-          marginTop: "1rem",
           padding: "0.75rem",
-          fontSize: "1rem",
+          borderRadius: "8px",
+          border: "1px solid #999",
+          marginBottom: "1rem",
         }}
       />
 
-      <button
-        type="button"
-        onClick={handleSend}
-        disabled={loading || threadLoading}
-        style={{ marginTop: "1rem" }}
-      >
+      <button type="button" onClick={handleAskCoach} disabled={loading || !threadId}>
         {loading ? "Thinking..." : "Ask Coach"}
       </button>
 
       {reply && (
         <div
           style={{
-            marginTop: "1rem",
+            marginTop: "1.5rem",
             padding: "1rem",
             border: "1px solid #ddd",
             borderRadius: "10px",
+            backgroundColor: "#fafafa",
           }}
         >
-          <strong>Coach Reply:</strong>
+          <h3 style={{ marginTop: 0 }}>Coach Reply:</h3>
           <div
             style={{
               marginTop: "0.75rem",
