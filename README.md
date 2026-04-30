@@ -80,3 +80,8 @@ gcloud run deploy green-habit-backend \
 * Trend charts for history
 * CI/CD pipeline
 * Production database upgrade
+
+## Demo
+[▶ Watch Demo on YouTube](https://youtu.be/2nJFeRnQHC4)
+
+[![Demo Video](https://img.youtube.com/vi/2nJFeRnQHC4/0.jpg)](https://youtu.be/2nJFeRnQHC4)
